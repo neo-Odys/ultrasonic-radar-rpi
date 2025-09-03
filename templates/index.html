@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dane z czujnika</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            position: relative;
+            height: 600px; /* Ustal wysokość kontenera */
+            overflow: hidden; /* Ukryj nadmiar */
+            background-color: black; /* Ustawienie tła na czarne */
+        }
+        .data-display {
+            position: absolute;
+            bottom: 0; /* Ustawienie na dole */
+            transform-origin: bottom; /* Ustawienie punktu obrotu */
+        }
+        .bar-container {
+            position: absolute;
+            bottom: 0;
+            width: 2px; /* Szerokość słupka zmniejszona o połowę */
+            background-color: transparent; /* Ustawienie tła na przezroczyste */
+        }
+        .bar {
+            background-color: green; /* Ustawienie koloru słupka na zielony */
+            border-radius: 5px;
+            width: 2px; /* Szerokość słupka zmniejszona o połowę */
+        }
+    </style>
+</head>
+<body>
+    <h1 style="color: white;">Dane z czujnika ultradźwiękowego</h1>
+    <div class="angle-list">
+        <h2 style="color: white;">Lista kątów i odległości</h2>
+        <div id="angle-container"></div>
+    </div>
+
+    <script>
+        const previousDistances = {};
+
+        // Generowanie listy kątów od 0 do 180 co 1 stopień
+        for (let angle = 0; angle <= 180; angle += 1) {
+            const angleDisplay = document.createElement('div');
+            angleDisplay.className = 'data-display';
+            angleDisplay.style.transform = `rotate(${angle + 90}deg)`; // Ustawienie kąta o 90° w prawo
+            angleDisplay.style.left = '50%'; // Ustawienie na środku
+            angleDisplay.style.transform += ' translateX(-50%)'; // Wyśrodkowanie
+
+            // Dodanie kontenera dla słupka
+            const barContainer = document.createElement('div');
+            barContainer.className = 'bar-container';
+            barContainer.style.height = '100%'; // Ustawienie wysokości kontenera
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            bar.id = `bar-${angle}`; // Unikalny identyfikator dla słupka
+            barContainer.appendChild(bar);
+            angleDisplay.appendChild(barContainer);
+            document.getElementById('angle-container').appendChild(angleDisplay);
+        }
+
+        async function fetchData() {
+            try {
+                const response = await fetch('/data');
+                const data = await response.json();
+
+                data.forEach(item => {
+                    const angle = item.angle;
+                    const distance = item.distance.toFixed(2); // Zaokrąglij do 2 miejsc po przecinku
+
+                    // Sprawdź, czy wartość dla danego kąta się zmieniła
+                    if (previousDistances[angle] !== distance) {
+                        previousDistances[angle] = distance; // Zaktualizuj poprzednią wartość
+                        const distanceCell = document.getElementById(`distance-${angle}`);
+                        const bar = document.getElementById(`bar-${angle}`);
+
+                        if (distanceCell) {
+                            distanceCell.textContent = distance; // Zaktualizuj wartość w tabeli
+                        }
+
+                        // Aktualizacja długości słupka
+                        const maxDistance = 1000; // Maksymalna długość w cm
+                        const barLength = Math.min(distance / maxDistance * 1200, 1200); // Procent długości (maks. 1200px)
+                        bar.style.height = `${barLength}px`; // Ustaw długość słupka
+                    }
+                });
+            } catch (error) {
+                console.error('Błąd podczas pobierania danych:', error);
+            }
+        }
+
+        // Odświeżaj dane co 1 sekundę
+        setInterval(fetchData, 1000);
+        // Początkowe pobranie danych
+        fetchData();
+    </script>
+</body>
+</html>
+
